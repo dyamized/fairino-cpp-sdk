@@ -46,11 +46,11 @@
     // SDK版本号
     #define SDK_VERSION_MAJOR "2"
     #define SDK_VERSION_MINOR "3"
-    #define SDK_VERSION_RELEASE "6"
+    #define SDK_VERSION_RELEASE "7"
     #define SDK_VERSION_RELEASE_NUM "0"
     #define SDK_VERSION "SDK V" SDK_VERSION_MAJOR "." SDK_VERSION_MINOR
 #endif
-#define SDK_RELEASE "SDK V2.3.6.0-robot v3.9.6"
+#define SDK_RELEASE "SDK V2.3.7.0-robot v3.9.7"
 
 #define ROBOT_CNDE_TCP_PORT 20005
 #define ROBOT_CMD_PORT 8080
@@ -836,6 +836,7 @@ errno_t FRRobot::MoveL(JointPos *joint_pos, DescPose *desc_pos, int tool, int us
     param[0][30] = offset_pos->rpy.rz;
     param[0][31] = oacc;
     param[0][32] = velAccParamMode;
+
 
     if (c.execute("MoveL", param, result))
     {
@@ -2839,6 +2840,32 @@ errno_t FRRobot::SetSpeed(int vel)
 }
 
 /**
+ * @brief  即时设置全局速度
+ * @param  [in]  vel  速度百分比，范围[0~100]
+ * @return  错误码
+ */
+errno_t FRRobot::SetSpeedInstant(int vel)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    string cmdStr = string("SetSpeed(") + to_string(vel) + ")";
+    FRAME frame(cmdFrameCnt, 983, cmdStr);
+    string sendFrame = PackFrame(frame);
+
+    memset(g_sendbuf, 0, BUFFER_SIZE * sizeof(char));
+    strcpy(g_sendbuf, sendFrame.c_str());
+
+    is_sendcmd = true;
+
+    logger_info("SetSpeed(%s)." , sendFrame);
+
+    return 0;
+}
+
+/**
  * @brief  设置系统变量值
  * @param  [in]  id  变量编号，范围[1~20]
  * @param  [in]  value 变量值
@@ -3643,7 +3670,7 @@ errno_t FRRobot::WaitMs(int t_ms)
 /**
  * @brief 设置碰撞等级
  * @param  [in]  mode  0-等级，1-百分比
- * @param  [in]  level 碰撞阈值，等级对应范围[],百分比对应范围[0~1]
+ * @param  [in]  level 碰撞阈值，等级对应范围[0-10],百分比对应范围[0~1]
  * @param  [in]  config 0-不更新配置文件，1-更新配置文件
  * @return  错误码
  */
@@ -3658,6 +3685,17 @@ errno_t FRRobot::SetAnticollision(int mode, float level[6], int config)
     XmlRpcValue param, result;
 
     param[0] = mode;
+    if (mode == 1)
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            if (level[i] > 1.0)
+            {
+                return ERR_PARAM_VALUE;
+            }
+            level[i] = level[i] * 10.0;
+        }
+    }
     param[1][0] = level[0];
     param[1][1] = level[1];
     param[1][2] = level[2];
@@ -16433,7 +16471,7 @@ errno_t FRRobot::SetRecoverAxleLuaErr(int status)
  * @param status status[0]: 0-未使能；1-已使能
  * @return  错误码
  */
-errno_t FRRobot::GetAxleLuaEnableStatus(int* status)
+errno_t FRRobot::GetAxleLuaEnableStatus(int status[])
 {
     if (IsSockError())
     {
@@ -16470,9 +16508,10 @@ errno_t FRRobot::GetAxleLuaEnableStatus(int* status)
  * @param forceSensorEnable 力传感器启用状态，0-不启用；1-启用
  * @param gripperEnable 夹爪启用状态，0-不启用；1-启用
  * @param IOEnable IO设备启用状态，0-不启用；1-启用
+ * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
  * @return  错误码
  */
-errno_t FRRobot::SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEnable, int IOEnable)
+errno_t FRRobot::SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEnable, int IOEnable, int dexhandEnable)
 {
     if (IsSockError())
     {
@@ -16485,6 +16524,7 @@ errno_t FRRobot::SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEn
     param[0] = forceSensorEnable;
     param[1] = gripperEnable;
     param[2] = IOEnable;
+    param[3] = dexhandEnable;
 
     if (c.execute("SetAxleLuaEnableDeviceType", param, result))
     {
@@ -16511,9 +16551,10 @@ errno_t FRRobot::SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEn
  * @param forceSensorEnable 力传感器启用状态，0-不启用；1-启用
  * @param gripperEnable 夹爪启用状态，0-不启用；1-启用
  * @param IOEnable IO设备启用状态，0-不启用；1-启用
+ * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
  * @return  错误码
  */
-errno_t FRRobot::GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripperEnable, int* IOEnable)
+errno_t FRRobot::GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripperEnable, int* IOEnable, int* dexhandEnable)
 {
     if (IsSockError())
     {
@@ -16532,6 +16573,10 @@ errno_t FRRobot::GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripper
             *forceSensorEnable = (int)result[1];
             *gripperEnable = (int)result[2];
             *IOEnable = (int)result[3];
+            if (result.size() >= 5)
+            {
+                *dexhandEnable = (int)result[4];
+            }
         }
         else
         {
@@ -16550,12 +16595,13 @@ errno_t FRRobot::GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripper
 
 /**
  * @brief 获取当前配置的末端设备
- * @param forceSensorEnable 力传感器启用设备编号 0-未启用；1-启用
- * @param gripperEnable 夹爪启用设备编号，0-不启用；1-启用
- * @param IODeviceEnable IO设备启用设备编号，0-不启用；1-启用
+ * @param [out] forceSensorEnable 力传感器启用设备编号 0-未启用；1-启用
+ * @param [out] gripperEnable 夹爪启用设备编号，0-不启用；1-启用
+ * @param [out] IODeviceEnable IO设备启用设备编号，0-不启用；1-启用
+ * @param [out] decHandEnable 灵巧手启用设备编号，0-不启用；1-启用
  * @return  错误码
  */
-errno_t FRRobot::GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnable[], int IODeviceEnable[])
+errno_t FRRobot::GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnable[], int IODeviceEnable[], int decHandEnable[])
 {
     if (IsSockError())
     {
@@ -16573,7 +16619,7 @@ errno_t FRRobot::GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnab
         {
             string paramStr = (string)result[1];
             std::vector<std::string> parS = split(paramStr, ',');
-            if (parS.size() != 24)
+            if (parS.size() != 40)
             {
                 logger_error("GetAxleLuaEnableDevice fail");
                 return -1;
@@ -16604,9 +16650,26 @@ errno_t FRRobot::GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnab
             IODeviceEnable[5] = stoi(parS[21]);
             IODeviceEnable[6] = stoi(parS[22]);
             IODeviceEnable[7] = stoi(parS[23]);
+
+            decHandEnable[0] = stoi(parS[24]);
+            decHandEnable[1] = stoi(parS[25]);
+            decHandEnable[2] = stoi(parS[26]);
+            decHandEnable[3] = stoi(parS[27]);
+            decHandEnable[4] = stoi(parS[28]);
+            decHandEnable[5] = stoi(parS[29]);
+            decHandEnable[6] = stoi(parS[30]);
+            decHandEnable[7] = stoi(parS[31]);
+            decHandEnable[8] = stoi(parS[32]);
+            decHandEnable[9] = stoi(parS[33]);
+            decHandEnable[10] = stoi(parS[34]);
+            decHandEnable[11] = stoi(parS[35]);
+            decHandEnable[12] = stoi(parS[36]);
+            decHandEnable[13] = stoi(parS[37]);
+            decHandEnable[14] = stoi(parS[38]);
+            decHandEnable[15] = stoi(parS[39]);
         }
         else {
-            logger_error("execute GetRobotTeachingPoint fail %d", errcode);
+            logger_error("execute GetAxleLuaEnableDevice fail %d", errcode);
         }
     }
     else
@@ -16622,10 +16685,14 @@ errno_t FRRobot::GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnab
 /**
  * @brief 设置启用夹爪动作控制功能
  * @param id 夹爪设备编号
- * @param func func[0]-夹爪使能；func[1]-夹爪初始化；2-位置设置；3-速度设置；4-力矩设置；6-读夹爪状态；7-读初始化状态；8-读故障码；9-读位置；10-读速度；11-读力矩; 12-15预留
+ * @param func func[0]-夹爪使能；func[1]-夹爪初始化；func[2]-位置设置；func[3]-速度设置；func[4]-力矩设置；func[6]-读夹爪状态；
+               func[7]-读初始化状态；func[8]-读故障码；func[9]-读位置；func[10]-读速度；func[11]-读力矩; func[12]-旋转夹爪旋转圈数设置； 
+               func[13]-旋转夹爪旋转速度设置； func[14]-旋转夹爪旋转力矩设置； func[15]-读旋转夹爪状态；func[16]-读旋转夹爪初始化状态；
+               func[17]-读旋转夹爪圈数；func[18]-读旋转夹爪速度；func[19]-读旋转夹爪力矩；func[20]-多轴同步运动设置；func[21]-故障清除指令；
+               func[22]-单轴运行状态；func[23]-所有轴运行状态；
  * @return  错误码
  */
-errno_t FRRobot::SetAxleLuaGripperFunc(int id, int func[])
+errno_t FRRobot::SetAxleLuaGripperFunc(int id, int func[32])
 {
     if (IsSockError())
     {
@@ -16636,7 +16703,7 @@ errno_t FRRobot::SetAxleLuaGripperFunc(int id, int func[])
     XmlRpcValue param, result;
 
     param[0] = id;
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < 32; i++)
     {
         param[1][i] = func[i];
     }
@@ -16665,10 +16732,14 @@ errno_t FRRobot::SetAxleLuaGripperFunc(int id, int func[])
 /**
  * @brief 获取启用夹爪动作控制功能
  * @param id 夹爪设备编号
- * @param func func[0]-夹爪使能；func[1]-夹爪初始化；2-位置设置；3-速度设置；4-力矩设置；6-读夹爪状态；7-读初始化状态；8-读故障码；9-读位置；10-读速度；11-读力矩
+ * @param func func[0]-夹爪使能；func[1]-夹爪初始化；func[2]-位置设置；func[3]-速度设置；func[4]-力矩设置；func[6]-读夹爪状态；
+               func[7]-读初始化状态；func[8]-读故障码；func[9]-读位置；func[10]-读速度；func[11]-读力矩; func[12]-旋转夹爪旋转圈数设置； 
+               func[13]-旋转夹爪旋转速度设置； func[14]-旋转夹爪旋转力矩设置； func[15]-读旋转夹爪状态；func[16]-读旋转夹爪初始化状态；
+               func[17]-读旋转夹爪圈数；func[18]-读旋转夹爪速度；func[19]-读旋转夹爪力矩；func[20]-多轴同步运动设置；func[21]-故障清除指令；
+               func[22]-单轴运行状态；func[23]-所有轴运行状态；
  * @return  错误码
  */
-errno_t FRRobot::GetAxleLuaGripperFunc(int id, int func[])
+errno_t FRRobot::GetAxleLuaGripperFunc(int id, int func[32])
 {
     if (IsSockError())
     {
@@ -16686,27 +16757,16 @@ errno_t FRRobot::GetAxleLuaGripperFunc(int id, int func[])
         {
             string paramStr = (string)result[1];
             std::vector<std::string> parS = split(paramStr, ',');
-            if (parS.size() != 16)
+            if (parS.size() != 32)
             {
                 logger_error("GetAxleLuaGripperFunc fail");
                 return -1;
             }
-            func[0] = stoi(parS[0]);
-            func[1] = stoi(parS[1]);
-            func[2] = stoi(parS[2]);
-            func[3] = stoi(parS[3]);
-            func[4] = stoi(parS[4]);
-            func[5] = stoi(parS[5]);
-            func[6] = stoi(parS[6]);
-            func[7] = stoi(parS[7]);
-            func[8] = stoi(parS[8]);
-            func[9] = stoi(parS[9]);
-            func[10] = stoi(parS[10]);
-            func[11] = stoi(parS[11]);
-            func[12] = stoi(parS[12]);
-            func[13] = stoi(parS[13]);
-            func[14] = stoi(parS[14]);
-            func[15] = stoi(parS[15]);
+
+            for (int i = 0; i < 32; i++)
+            {
+                func[i] = stoi(parS[i]);
+            }
         }
         else {
             logger_error("execute GetAxleLuaGripperFunc fail %d", errcode);
@@ -17310,8 +17370,29 @@ errno_t FRRobot::AxleLuaUpload(std::string filePath)
             return ERR_UPLOAD_FILE_NOT_FOUND;
         }
         std::string filename = filePath.substr(pos + 1);
-        std::string fileFullName = "/tmp/" + filename;
-        cout << "file full path is << " << fileFullName << endl;
+
+        XmlRpcClient c(serverUrl, 20003);
+        XmlRpcValue param, result;
+        param[0] = filename;
+        logger_info("file name is: [%s]", filename.c_str());
+        if (c.execute("AxleOpenLuaUpLoadCheck", param, result))
+        {
+            errcode = int(result[0]);
+            std::string res_str = std::string(result[1]);
+            logger_error("lua format, error code is: %d, %s", errcode, res_str.c_str());
+            if (0 != errcode)
+            {
+                logger_error("lua format error.,error code is: %d, %s", errcode, res_str.c_str());
+            }
+            c.close();
+            return errcode;
+        }
+        else {
+            logger_error("execute AxleOpenLuaUpLoadCheck fail.");
+            c.close();
+            return ERR_XMLRPC_CMD_FAILED;
+        }
+
         int rtn = SetAxleFileType(2);
         if (rtn != 0)
         {
@@ -17325,10 +17406,10 @@ errno_t FRRobot::AxleLuaUpload(std::string filePath)
             return -1;
         }
         Sleep(1000);
-        rtn = SlaveFileWrite(1, 7, fileFullName);
+        rtn = SlaveFileWrite(1, 7, filename);
         if (rtn != 0)
         {
-            logger_error("SlaveFileWrite failed %s" ,fileFullName);
+            logger_error("SlaveFileWrite failed %s" , filename);
             return -1;
         }
 
@@ -20187,7 +20268,7 @@ errno_t FRRobot::FieldBusSlaveReadAI(uint8_t AIIndex, uint8_t readNum, double st
         {
             for (int i = 0; i < readNum; i++)
             {
-                status[i] = (double)result[i + 1];     
+                status[i] = (double)result[i + 1];    
             }
         }
     }
@@ -22708,7 +22789,7 @@ errno_t FRRobot::SetAdmittanceParams(double M[6], double B[6], double K[6], doub
  * @param [in] torqueCoeff J1-J6力矩补偿系数[0-1]
  * @return 错误码
  */
-errno_t FRRobot::SerCoderCompenParams(int status, double torqueCoeff[6])
+errno_t FRRobot::SetCoderCompenParams(int status, double torqueCoeff[6])
 {
     if (IsSockError())
     {
@@ -22732,7 +22813,7 @@ errno_t FRRobot::SerCoderCompenParams(int status, double torqueCoeff[6])
     param[0][5] = torqueCoeff[4];
     param[0][6] = torqueCoeff[5];
 
-    if (c.execute("SerCoderCompenParams", param, result))
+    if (c.execute("SetCoderCompenParams", param, result))
     {
         errcode = int(result);
     }

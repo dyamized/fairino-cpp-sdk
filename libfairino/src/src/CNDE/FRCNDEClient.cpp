@@ -538,7 +538,7 @@ int FRCNDEClient::SetCNDEStateConfig(vector<RobotState> states, int period)
         }
     }
 
-    if (period < 8 || period > 1000)
+    if (period < 4 || period > 1000)
     {
         return ERR_PARAM_VALUE;
     }
@@ -585,7 +585,7 @@ int FRCNDEClient::DeleteCNDEState(RobotState state)
 
 int FRCNDEClient::SetCNDEStatePeriod(int period)
 {
-    if (period < 8 || period > 1000)
+    if (period < 4 || period > 1000)
     {
         return ERR_PARAM_VALUE;
     }

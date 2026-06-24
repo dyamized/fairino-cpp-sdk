@@ -346,14 +346,14 @@ typedef struct _ROBOT_STATE_PKG
 	uint8_t  ft_sensor_active;   // Force-torque sensor active state: 0-Reset, 1-Active 
 	uint8_t  EmergencyStop;      // Emergency stop flag: 0-Not pressed, 1-Pressed 
 	int      motion_done;        // Motion completion signal: 1-Completed, 0-Not completed 
-	uint8_t  gripper_motiondone; // Gripper motion completion signal: 1-Completed, 0-Not completed 
+	uint8_t  gripper_motiondone; // Gripper Motion Completion Signal: 0-Not completed; 1-Motion completed (object detected); 2-Motion completed (no object detected) 
 	int      mc_queue_len;       // Motion command queue length 
 	uint8_t  collisionState;     // Collision detection: 1-Collision, 0-No collision 
 	int      trajectory_pnum;    // Trajectory point number 
 	uint8_t  safety_stop0_state; // Safety stop signal SI0 
 	uint8_t  safety_stop1_state; // Safety stop signal SI1 
 	uint8_t  gripper_fault_id;   // Faulty gripper number 
-	uint16_t gripper_fault;      // Gripper fault 
+	uint16_t gripper_fault;      // Gripper Fault: 0-No fault; 1-485 timeout; 2-Command error; 3-Workpiece dropped; Other: Gripper fault code + 3 
 	uint16_t gripper_active;     // Gripper active state 
 	uint8_t  gripper_position;   // Gripper position 
 	int8_t   gripper_speed;      // Gripper speed 
@@ -483,14 +483,14 @@ enum class RobotState
 	FtSensorActive = 30,        // Force-torque sensor active state: 0-Reset, 1-Active
 	EmergencyStop = 31,         // Emergency stop flag: 0-Not pressed, 1-Pressed
 	MotionDone = 32,            // Motion completion signal: 1-Completed, 0-Not completed
-	GripperMotiondone = 33,     // Gripper motion completion signal: 1-Completed, 0-Not completed
+	GripperMotiondone = 33,     // Gripper Fault: 0-No fault; 1-485 timeout; 2-Command error; 3-Workpiece dropped; Other: Gripper fault code + 3
 	McQueueLen = 34,            // Motion command queue length
 	CollisionState = 35,        // Collision detection: 1-Collision, 0-No collision
 	TrajectoryPnum = 36,        // Trajectory point number
 	SafetyStop0State = 37,      // Safety stop signal SI0
 	SafetyStop1State = 38,      // Safety stop signal SI1
 	GripperFaultId = 39,        // Faulty gripper number
-	GripperFault = 40,          // Gripper fault
+	GripperFault = 40,          // Gripper Fault: 0-No fault; 1-485 timeout; 2-Command error; 3-Workpiece dropped; Other: Gripper fault code + 3
 	GripperActive = 41,         // Gripper active state
 	GripperPosition = 42,       // Gripper position
 	GripperSpeed = 43,          // Gripper speed

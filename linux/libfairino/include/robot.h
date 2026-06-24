@@ -833,6 +833,13 @@ public:
     *@return  Error code
 	 */
 	errno_t  SetSpeed(int vel);
+
+	/**
+	 * @brief Instantly sets the global speed.
+	 * @param [in] vel Speed percentage value, ranging from 0 to 100.
+	 * @return Returns 0 on success, or an error code on failure.
+	 */
+	errno_t SetSpeedInstant(int vel);
 	
 	/**
     *@brief  Set the value of a system variable
@@ -1494,21 +1501,21 @@ public:
 	/**
 	 * @brief  Set the default job program to be automatically loaded upon startup
 	 * @param  [in] flag  0- boot does not automatically load the default program, 1- boot automatically load the default program
-	 * @param  [in] program_name Job program name and path, for example, /fruser/movej.lua, where /fruser/ is a fixed path
+	 * @param  [in] program_name Job program name, for example, movej.lua
 	 * @return  Error code
 	 */
 	errno_t  LoadDefaultProgConfig(uint8_t flag, char program_name[64]);
 	
 	/**
     *@brief  Load the specified job program
-    *@param  [in] program_name Job program name and path, for example, /fruser/movej.lua, where /fruser/ is a fixed path
+    *@param  [in] program_name Job program name, for example, movej.lua
     *@return  Error code
 	 */
 	errno_t  ProgramLoad(char program_name[64]);
 	
 	/**
     *@brief  Get the loaded job program name
-    *@param  [out] program_name Job program name and path, for example, /fruser/movej.lua, where /fruser/ is a fixed path
+    *@param  [out] program_name Job program name, for example, movej.lua
     *@return  Error code
 	 */
 	errno_t  GetLoadedProgram(char program_name[64]);	
@@ -2306,6 +2313,27 @@ public:
 	 * @return Error code
 	 */
 	errno_t WeaveEnd(int weaveNum);
+
+	/**
+	 * @brief Enable return to cycle center after weaving
+	 * @param [in] flag Whether to return to the cycle center point after weaving ends; 0 - do not return, 1 - return
+	 * @return Error code
+	 */
+	errno_t SetWeaveBackCenterConfig(int flag);
+
+	/**
+	 * @brief Get the parameter for return to cycle center after weaving
+	 * @param [out] flag Whether to return to the cycle center point after weaving ends; 0 - do not return, 1 - return
+	 * @return Error code
+	 */
+	errno_t GetWeaveBackCenterConfig(int& flag);
+
+	/**
+	 * @brief Set weave offset in real time
+	 * @param [in] offset Real-time offset value [mm, °]
+	 * @return Error code
+	 */
+	errno_t SetWeaveOffsetRT(DescPose offset);
 
 	/**
 	 * @brief Forward Wire Feed
@@ -3590,47 +3618,60 @@ public:
 	errno_t GetAxleLuaEnableStatus(int status[]);
 
 	/**
-	* @brief Set the axle LUA end device enablement type
+	* @brief Set End LUA End Device Enable Type
 	* @param forceSensorEnable Force sensor Enabled status, 0- Disable. 1- Enable
 	* @param gripperEnable Specifies whether the gripper is enabled. 0- Disables the gripper. 1- Enable
 	* @param IOEnable IO Indicates whether the device is enabled. 0- Indicates that the device is disabled. 1- Enable
+	* @param dexhandEnable Dexterous Hand enable status, 0 - disabled; 1 - enabled
 	* @return  error code
 	*/
-	errno_t SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEnable, int IOEnable);
+	errno_t SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEnable, int IOEnable, int dexhandEnable);
 
 	/**
-	* @brief Gets the axle LUA end device enabled type
+	* @brief Get End LUA End Device Enable Type
 	* @param enable enable[0]: indicates whether the forceSensorEnable force sensor is enabled. 0- Indicates whether the forcesenSOrenable force sensor is disabled. 1- Enable
 	* @param enable enable[1]:gripperEnable Indicates whether the gripper is enabled. 0- Disables the gripper. 1- Enable
 	* @param enable enable[2]:IOEnable I/o Indicates whether the device is enabled. 0- Indicates whether the device is disabled. 1- Enable
+	* @param enable enable[3]:dexhandEnable Dexterous Hand enable status, 0 - disabled; 1 - enabled
 	* @return  error code
 	*/
-	errno_t GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripperEnable, int* IOEnable);
+	errno_t GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripperEnable, int* IOEnable, int* dexhandEnable);
 
 	/**
-	* @brief gets the currently configured end device
-	*  @param forceSensorEnable Force sensor Enabled Device number 0- Not enabled; 1- Enable
-	* @param gripperEnable Number of the gripperenable device, 0- Disable; 1- Enable
-	* @param IODeviceEnable IODevice enable Device ID. 0- Disable. 1- Enable
-	* @return  error code
+	@brief Get Currently Configured End Devices
+	@param [out] forceSensorEnable Force sensor enabled device number: 0 - disabled; 1 - enabled
+	@param [out] gripperEnable Gripper enabled device number: 0 - disabled; 1 - enabled
+	@param [out] IODeviceEnable I/O device enabled device number: 0 - disabled; 1 - enabled
+	@param [out] decHandEnable Dexterous hand enabled device number: 0 - disabled; 1 - enabled
+	@return Error code
 	*/
-	errno_t GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnable[], int IODeviceEnable[]);
+	errno_t GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnable[], int IODeviceEnable[], int decHandEnable[]);
 
 	/**
-	* @brief setting enables the gripper action control function
+	* @brief Set Enable Gripper Action Control Function
 	* @param id ID of the gripper device
-	* @param func func[0]- gripper enabled; func[1]- gripper initialization; 2- Position setting; 3- Speed setting; 4- Torque setting; 6- Read the gripper status; 7- Read the initialization state; 8- Read the fault code; 9- Read position; 10- Read speed; 11- Read torque
+	* @param func func[0]-Gripper enable;func[1]-Gripper initialization;func[2]-Position setting;func[3]-Speed setting;func[4]-Torque setting;func[6]-Read gripper status
+        func[7]-Read initialization status;func[8]-Read fault code;func[9]-Read position;func[10]-Read speed;func[11]-Read torque
+        func[12]-Rotating gripper revolution setting;func[13]-Rotating gripper rotation speed setting;func[14]-Rotating gripper rotation torque setting
+        func[15]-Read rotating gripper status;func[16]-Read rotating gripper initialization status;func[17]-Read rotating gripper revolutions
+        func[18]-Read rotating gripper rotation speed;func[19]-Read rotating gripper rotation torque;func[20]-Multi-axis synchronous motion setting
+        func[21]-Fault reset command;func[22]-Single-axis operating status;func[23]-All axes operating status
 	* @return  error code
 	*/
-	errno_t SetAxleLuaGripperFunc(int id, int func[]);
+	errno_t SetAxleLuaGripperFunc(int id, int func[32]);
 
 	/**
-	* @brief obtains the enable gripper action control function
+	* @brief Get Enable Gripper Action Control Function
 	* @param id ID of the gripper device
-	* @param func func[0]- gripper enabled; func[1]- gripper initialization; 2- Position setting; 3- Speed setting; 4- Torque setting; 6- Read the gripper status; 7- Read the initialization state; 8- Read the fault code; 9- Read position; 10- Read speed; 11- Read torque
+	* @param func func[0]-Gripper enable;func[1]-Gripper initialization;func[2]-Position setting;func[3]-Speed setting;func[4]-Torque setting;func[6]-Read gripper status
+        func[7]-Read initialization status;func[8]-Read fault code;func[9]-Read position;func[10]-Read speed;func[11]-Read torque
+        func[12]-Rotating gripper revolution setting;func[13]-Rotating gripper rotation speed setting;func[14]-Rotating gripper rotation torque setting
+        func[15]-Read rotating gripper status;func[16]-Read rotating gripper initialization status;func[17]-Read rotating gripper revolutions
+        func[18]-Read rotating gripper rotation speed;func[19]-Read rotating gripper rotation torque;func[20]-Multi-axis synchronous motion setting
+        func[21]-Fault reset command;func[22]-Single-axis operating status;func[23]-All axes operating status
 	* @return  error code
 	*/
-	errno_t GetAxleLuaGripperFunc(int id, int func[]);
+	errno_t GetAxleLuaGripperFunc(int id, int func[32]);
 
 	/**
 	* @brief Sets the controller peripheral protocol LUA file name
@@ -4808,12 +4849,12 @@ public:
 	errno_t SetAdmittanceParams(double M[6], double B[6], double K[6], double threshold[6], double sensitivity[6], int setZeroFlag);
 
 	/**
-	 * @brief Activate the torque compensation function and compensation coefficient
+	 * @brief Enable torque compensation function and compensation coefficient
 	 * @param [in] status Switch, 0- off; 1- Start
 	 * @param [in] torqueCoeff Torque compensation coefficient of J1-J6 [0-1]
 	 * @return Error code
 	 */
-	errno_t SerCoderCompenParams(int status, double torqueCoeff[6]);
+	errno_t SetCoderCompenParams(int status, double torqueCoeff[6]);
 
 	/**
 	* @brief TCP calibration of photoelectric sensors-Computing tool RPY
@@ -5173,6 +5214,59 @@ public:
 	 * @return Error code, 0 indicates success, non-zero indicates failure
 	 */
 	errno_t SetLaserWeldingErrStateExtDiNum(int diNum);
+
+	/**
+	 * @brief  Control dexterous hand movement
+	 * @param  [in] idstart  Starting slave station number
+	 * @param  [in] slaveNum  Number of slave stations
+	 * @param  [in] pos  Position array, length 16, range (-360~360)
+	 * @param  [in] speed  Speed percentage array, length 16, range [0~100]
+	 * @param  [in] force  Torque percentage array, length 16, range [0~100]
+	 * @param  [in] max_time  Maximum waiting time, range [0~30000], unit: ms
+	 * @return  Error code, 0 on success
+	 */
+	errno_t SetDexterousHandsMove(int idstart, int slaveNum, double pos[16], int speed[16], int force[16], int max_time);
+
+	/**
+	 * @brief  Control dexterous hand reset and activation
+	 * @param  [in] id  Slave station number
+	 * @param  [in] act  0-Reset 1-Activate
+	 * @return  Error code, 0 on success
+	 */
+	errno_t SetDexterousHandsAct(int id, int act);
+
+	/**
+	 * @brief  Clear dexterous hand errors
+	 * @return  Error code, 0 on success
+	 */
+	errno_t ClearDexterousHandsError();
+
+	/**
+	 * @brief Set dexterous hand function control
+	 * @param [in] id Gripper device number
+	 * @param [in] func func[0]-Gripper enable;func[1]-Gripper initialization;func[2]-Position setting;func[3]-Speed setting;func[4]-Torque setting;func[6]-Read gripper status
+        func[7]-Read initialization status;func[8]-Read fault code;func[9]-Read position;func[10]-Read speed;func[11]-Read torque
+        func[12]-Rotating gripper revolution setting;func[13]-Rotating gripper rotation speed setting;func[14]-Rotating gripper rotation torque setting
+        func[15]-Read rotating gripper status;func[16]-Read rotating gripper initialization status;func[17]-Read rotating gripper revolutions
+        func[18]-Read rotating gripper rotation speed;func[19]-Read rotating gripper rotation torque;func[20]-Multi-axis synchronous motion setting
+        func[21]-Fault reset command;func[22]-Single-axis operating status;func[23]-All axes operating status
+	 * @return  Error code, 0 on success
+	 */
+	errno_t SetDexterousHandsFunc(int id, int func[32]);
+
+	/**
+	 * @brief Get dexterous hand function control status
+	 * @param [in] id  Gripper device number
+	 * @param [out] func func[0]-Gripper enable;func[1]-Gripper initialization;func[2]-Position setting;func[3]-Speed setting;func[4]-Torque setting;func[6]-Read gripper status
+        func[7]-Read initialization status;func[8]-Read fault code;func[9]-Read position;func[10]-Read speed;func[11]-Read torque
+        func[12]-Rotating gripper revolution setting;func[13]-Rotating gripper rotation speed setting;func[14]-Rotating gripper rotation torque setting
+        func[15]-Read rotating gripper status;func[16]-Read rotating gripper initialization status;func[17]-Read rotating gripper revolutions
+        func[18]-Read rotating gripper rotation speed;func[19]-Read rotating gripper rotation torque;func[20]-Multi-axis synchronous motion setting
+        func[21]-Fault reset command;func[22]-Single-axis operating status;func[23]-All axes operating status
+	 * @return  Error code, 0 on success, -1 or other error code on failure
+	 */
+	errno_t GetDexterousHandsFunc(int id, int func[32]);
+
 
 	/**
 	 *@brief  Robot interface class destructor

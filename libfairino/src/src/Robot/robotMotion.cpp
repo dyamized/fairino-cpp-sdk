@@ -426,3 +426,135 @@ errno_t FRRobot::ServoMIT(double posGain[6], double desPos[6], double velGain[6]
     }
 
 }
+
+
+/**
+ * @brief 设置摆动结束回周期零点
+ * @param [in] flag 摆动结束是否回周期零点；0-不回周期零点；1-回周期零点
+ * @return 错误码
+ */
+errno_t FRRobot::SetWeaveBackCenterConfig(int flag)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = flag;
+
+    if (c.execute("SetWeaveBackCenterConfig", param, result))
+    {
+        errcode = int(result);
+        if (0 != errcode)
+        {
+            logger_error("execute SetWeaveBackCenterConfig fail: %d.", errcode);
+            c.close();
+            return errcode;
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief 设置摆动实时偏移
+ * @param [in] offset 实时偏移量[mm，°]
+ * @return 错误码
+ */
+errno_t FRRobot::SetWeaveOffsetRT(DescPose offset)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    //XmlRpcClient c(serverUrl, 20003);
+    //XmlRpcValue param, result;
+    //param[0] = offset.tran.x;
+    //param[1] = offset.tran.y;
+    //param[2] = offset.tran.z;
+    //param[3] = offset.rpy.rx;
+    //param[4] = offset.rpy.ry;
+    //param[5] = offset.rpy.rz;
+    //if (c.execute("SetWeaveOffsetRT", param, result))
+    //{
+    //    errcode = int(result);
+    //    if (0 != errcode)
+    //    {
+    //        logger_error("execute SetWeaveOffsetRT fail: %d.", errcode);
+    //        c.close();
+    //        return errcode;
+    //    }
+    //}
+    //else
+    //{
+    //    c.close();
+    //    return ERR_XMLRPC_CMD_FAILED;
+    //}
+    //c.close();
+
+    const int BUFFER_SIZE = 1024 * 4;
+
+    char paramStr[128] = "";
+    sprintf(paramStr, "%f,%f,%f,%f,%f,%f", offset.tran.x, offset.tran.y, offset.tran.z, offset.rpy.rx, offset.rpy.ry, offset.rpy.rz);
+
+    string cmdStr = string("SetWeaveOffsetRT(") + paramStr + ")";
+    FRAME frame(cmdFrameCnt, 1368, cmdStr);
+    string sendFrame = PackFrame(frame);
+
+    memset(g_sendbuf, 0, BUFFER_SIZE * sizeof(char));
+    strcpy(g_sendbuf, sendFrame.c_str());
+
+    is_sendcmd = true;
+
+    logger_info("SetWeaveOffsetRT(%s).", sendFrame);
+
+    return 0;
+}
+
+/**
+ * @brief 获取摆动结束回周期零点参数
+ * @param [out] flag 摆动结束是否回周期零点；0-不回周期零点；1-回周期零点
+ * @return 错误码
+ */
+errno_t FRRobot::GetWeaveBackCenterConfig(int& flag)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("GetWeaveBackCenterConfig", param, result))
+    {
+        errcode = int(result[0]);
+        if (0 == errcode)
+        {
+            flag = (int)result[1];
+        }
+        else
+        {
+            logger_error("execute GetWeaveBackCenterConfig fail %d ", errcode);
+        }
+    }
+    else
+    {
+        errcode = ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}

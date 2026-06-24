@@ -713,3 +713,215 @@ errno_t FRRobot::SetLaserWeldingErrStateExtDiNum(int diNum)
     c.close();
     return errcode;
 }
+
+/**
+ * @brief 控制灵巧手运动
+ * @param [in] idstart  起始从站号
+ * @param [in] slaveNum  数量
+ * @param [in] pos[16]  位置(-360~360)
+ * @param [in] speed[16]  速度百分比，范围[0~100]
+ * @param [in] force[16]  力矩百分比，范围[0~100]
+ * @param [in] max_time  最大等待时间，范围[0~30000]，单位ms
+ * @return 错误码
+ */
+errno_t FRRobot::SetDexterousHandsMove(int idstart, int slaveNum, double pos[16], int speed[16], int force[16], int max_time)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = idstart;
+    param[1] = slaveNum;
+    for (int i = 0; i < 16; i++)
+    {
+        param[2][i] = pos[i];
+    }
+    for (int i = 0; i < 16; i++)
+    {
+        param[3][i] = speed[i];
+    }
+    for (int i = 0; i < 16; i++)
+    {
+        param[4][i] = force[i];
+    }
+    param[5] = max_time;
+
+    if (c.execute("SetDexterousHandsMove", param, result))
+    {
+        errcode = int(result);
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief  控制灵巧手复位激活
+ * @param  [in] id  从站号
+ * @param  [in] act  0-复位 1-激活
+ * @return  错误码
+ */
+errno_t FRRobot::SetDexterousHandsAct(int id, int act)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = id;
+    param[1] = act;
+
+    if (c.execute("SetDexterousHandsAct", param, result))
+    {
+        errcode = int(result);
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief  清除灵巧手错误
+ * @return  错误码
+ */
+errno_t FRRobot::ClearDexterousHandsError()
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("ClearDexterousHandsError", param, result))
+    {
+        errcode = int(result);
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief 设置启用夹爪动作控制功能
+ * @param [in] id 夹爪设备编号
+ * @param [in] func func[0]-夹爪使能；func[1]-夹爪初始化；2-位置设置；3-速度设置；4-力矩设置；6-读夹爪状态；7-读初始化状态；8-读故障码；9-读位置；10-读速度；11-读力矩
+ * @return  错误码
+ */
+errno_t FRRobot::SetDexterousHandsFunc(int id, int func[32])
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = id;
+    for (int i = 0; i < 32; i++)
+    {
+        param[1][i] = func[i];
+    }
+
+    if (c.execute("SetDexterousHandsFunc", param, result))
+    {
+        errcode = int(result);
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief 获取启用夹爪动作控制功能
+ * @param [in] id 夹爪设备编号
+ * @param [out] func func[0]-夹爪使能；func[1]-夹爪初始化；2-位置设置；3-速度设置；4-力矩设置；6-读夹爪状态；7-读初始化状态；8-读故障码；9-读位置；10-读速度；11-读力矩
+ * @return  错误码
+ */
+errno_t FRRobot::GetDexterousHandsFunc(int id, int func[32])
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = id;
+
+    if (c.execute("GetDexterousHandsFunc", param, result))
+    {
+        errcode = int(result[0]);
+        if (errcode == 0)
+        {
+            std::string resultStr = std::string(result[1]);
+            // 分割字符串
+            std::vector<std::string> parS;
+            std::stringstream ss(resultStr);
+            std::string item;
+            while (std::getline(ss, item, ','))
+            {
+                parS.push_back(item);
+            }
+
+            if (parS.size() != 32)
+            {
+                logger_error("GetDexterousHandsFunc fail");
+                c.close();
+                return -1;
+            }
+
+            for (int i = 0; i < 32; i++)
+            {
+                func[i] = std::stoi(parS[i]);
+            }
+        }
+        else
+        {
+            logger_error("execute GetDexterousHandsFunc fail %d", errcode);
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
