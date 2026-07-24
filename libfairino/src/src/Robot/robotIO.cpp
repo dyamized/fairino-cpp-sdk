@@ -869,3 +869,103 @@ errno_t FRRobot::GetStandardDOLevel(int config[8])
 
     return errcode;
 }
+
+/**
+ * @brief 获取扩展DI功能配置
+ * @param [out] DIConfig 扩展DI输入配置；DIConfig[0]-焊机准备扩展DI端口；
+                                        DIConfig[1]-起弧成功扩展DI端口；
+                                        DIConfig[2]-焊接中断恢复扩展DI端口；
+                                        DIConfig[3]-焊接中断退出扩展DI端口；
+                                        DIConfig[4]-焊丝寻位成功扩展DI端口；
+                                        DIConfig[5]-激光焊机运行状态扩展DI端口；
+                                        DIConfig[6]-激光焊机故障状态扩展DI端口；
+                                        DIConfig[7-15]-预留
+ * @return  错误码
+ */
+errno_t FRRobot::GetExtDIConfig(int DIConfig[16])
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("GetExtDIConfig", param, result))
+    {
+        errcode = int(result[0]);
+        if (errcode == 0)
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                DIConfig[i] = int(result[i + 1]);
+            }
+        }
+        else
+        {
+            logger_error("execute GetExtDIConfig fail %d", errcode);
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+
+    return errcode;
+}
+
+/**
+ * @brief 获取扩展DO功能配置
+ * @param [out] DOConfig 扩展DO输入配置；DOConfig[0]-焊机起弧扩展DO端口；
+                                        DOConfig[1]-气体检测扩展DO端口；
+                                        DOConfig[2]-正向送丝扩展DO端口；
+                                        DOConfig[3]-反向送丝扩展DO端口；
+                                        DOConfig[4]-焊丝寻位扩展DO端口；
+                                        DOConfig[5]-焊机控制模式扩展DO端口；
+                                        DOConfig[6]-激光焊机使能扩展DO端口；
+                                        DOConfig[7]-激光焊机启动(出光)扩展DO端口；
+                                        DOConfig[8]-激光焊机复位扩展DO端口；
+                                        DOConfig[9-15]-预留
+ * @return  错误码
+ */
+errno_t FRRobot::GetExtDOConfig(int DOConfig[16])
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("GetExtDOConfig", param, result))
+    {
+        errcode = int(result[0]);
+        if (errcode == 0)
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                DOConfig[i] = int(result[i + 1]);
+            }
+        }
+        else
+        {
+            logger_error("execute GetExtDOConfig fail %d", errcode);
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+
+    return errcode;
+}

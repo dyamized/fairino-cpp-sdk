@@ -917,20 +917,20 @@ public:
 	errno_t ComputeExTCF(DescPose *tcp_pose);
 
 	/**
-	 * @brief  Set the external tool coordinate system
-	 * @param  [in] id Frame number, range[0~14]
-	 * @param  [in] etcp  Tool center position relative to end flange center position
-	 * @param  [in] etool  To be determined
-	 * @return  Error code
+	 * @brief Set the external tool coordinate system
+	 * @param [in] id Frame number, Numbers 20 to 39 correspond to external tool coordinate systems 0 to 19
+	 * @param [in] etcp TCP pose from base to external fixed tool
+	 * @param [in] etool Workpiece coordinate frame pose mounted on robot end-effector
+	 * @return Error code
 	 */
 	errno_t  SetExToolCoord(int id, DescPose *etcp, DescPose *etool);
 	
 	/**
-    *@brief  Set the list of external tool coordinate systems
-    *@param  [in] id Frame number, range[0~14]
-    *@param  [in] etcp  Tool center position relative to end flange center position
-    *@param  [in] etool  To be determined
-    *@return  Error code
+    *@brief Set the list of external tool coordinate systems
+    *@param [in] id Frame number, Numbers 20 to 39 correspond to external tool coordinate systems 0 to 19
+    *@param [in] etcp TCP pose from base to external fixed tool
+    *@param [in] etool Workpiece coordinate frame pose mounted on robot end-effector
+    *@return Error code
 	 */
 	errno_t  SetExToolList(int id, DescPose *etcp, DescPose *etool);	
 
@@ -2045,6 +2045,15 @@ public:
 	 * @return Error code
 	 */
 	errno_t ConveyorSetParam(float para[6], int followType = 0, int startDis = 0, int endDis = 100);
+
+	/**
+	 * @brief Configure parameters for stationary conveyor tracking
+	 * @param [in] trackMode Tracking mode: 0-Time based; 1-Distance based; 2-Trigger on either time or distance threshold reached
+	 * @param [in] trackTime Tracking duration, unit: second
+	 * @param [in] trackDis Tracking distance, unit: millimeter
+	 * @return Error code
+	 */
+	int SetStationaryTrackPara(int trackMode, double trackTime, int trackDis);
 
 	/**
 	 * @brief belt grab point compensation
@@ -3414,6 +3423,36 @@ public:
 	  */
 	    errno_t SetExtDIWeldBreakOffRecover(int reWeldDINum, int abortWeldDINum);
 
+	/**
+	* @brief Get extended DI function configuration
+	* @param [out] DIConfig Extended DI input configuration; DIConfig[0] - Extended DI port for welder ready signal;
+							DIConfig[1] - Extended DI port for arc ignition success signal;
+							DIConfig[2] - Extended DI port for weld interruption resume signal;
+							DIConfig[3] - Extended DI port for weld interruption exit signal;
+							DIConfig[4] - Extended DI port for wire search completion signal;
+							DIConfig[5] - Extended DI port for laser welder running status;
+							DIConfig[6] - Extended DI port for laser welder fault status;
+							DIConfig[7-15] - Reserved
+	* @return Error code
+	*/
+	errno_t GetExtDIConfig(int DIConfig[16]);
+
+	/**
+	* @brief Get extended DO function configuration
+	* @param [out] DOConfig Extended DO output configuration; DOConfig[0] - Extended DO port for welder arc ignition;
+							DOConfig[1] - Extended DO port for gas detection;
+							DOConfig[2] - Extended DO port for forward wire feeding;
+							DOConfig[3] - Extended DO port for reverse wire feeding;
+							DOConfig[4] - Extended DO port for wire positioning;
+							DOConfig[5] - Extended DO port for welder control mode;
+							DOConfig[6] - Extended DO port for laser welder enable;
+							DOConfig[7] - Extended DO port for laser welder start (laser emission);
+							DOConfig[8] - Extended DO port for laser welder reset;
+							DOConfig[9-15] - Reserved
+	* @return Error code
+	*/
+	errno_t GetExtDOConfig(int DOConfig[16]);
+
 	 /**
 	  * @brief sets the collision detection method of the robot
 	  * @param [in] method Collision detection method: 0- current mode; 1- Dual encoder; 2- Current and dual encoder turn on simultaneously
@@ -3784,11 +3823,18 @@ public:
 
 	/**
 	 * @brief Set welder control mode
-	 * @param [in] mode Welder control mode; 0-Unified mode
+	 * @param [in] mode Welder control mode; 0-DC one-knob mode; 1-Pulse one-knob mode; 2-JOB mode; 3-Local control mode; 4-Separate mode; 5-CC/CV mode; 6-TIG; 7-CMT
 	 * @param [in] ioType Control type; 0-Control box IO; 1-Digital communication protocol (UDP); 2-Digital communication protocol (ModbusTCP)
 	 * @return Error code
 	 */
 	errno_t SetWeldMachineCtrlMode(int mode, int ioType = 1);
+
+	/**
+	 * @brief Get welder control mode
+	 * @param [out] mode Welder control mode; 0-DC one-knob mode; 1-Pulse one-knob mode; 2-JOB mode; 3-Local control mode; 4-Separate mode; 5-CC/CV mode; 6-TIG; 7-CMT
+	 * @return Error code
+	 */
+	errno_t GetWeldMachineCtrlMode(int& mode);
 
 	/**
 	* @brief Start singular pose protection
@@ -4573,36 +4619,44 @@ public:
 	errno_t SetTorqueDetectionSwitch(uint8_t flag);
 
 	/**
-	* @brief Get the tool coordinate system according to the No
-	* @param [in] index Tool coordinate system No
-	* @param [out] coord Coordinate system value
-	* @return Error code
-	 */
-	errno_t GetToolCoordWithID(int id, DescPose& coord);
-
-	/**
-	* @brief Get the workpiece coordinate system according to the No
-	* @param [in] index Workpiece coordinate system No
-	* @param [out] coord Coordinate system value
-	* @return Error code
-	*/
-	errno_t GetWObjCoordWithID(int id, DescPose& coord);
-
-	/**
-	* @brief Get the external tool coordinate system according to the No
-	* @param [in] index External tool coordinate system No
-	* @param [out] coord Coordinate system value
+	 * @brief Get tool coordinate system by ID
+	 * @param [in] id Tool coordinate system ID
+	 * @param [out] coord Coordinate system values
+	 * @param [out] type Tool type, 0-Tool; 1-Sensor
+	 * @param [out] install Mount position, 0-Robot flange; 1-External robot
+	 * @param [out] toolID Tool ID
+	 * @param [out] loadNo Payload number
 	 * @return Error code
 	 */
-	errno_t GetExToolCoordWithID(int id, DescPose& coord);
+	errno_t GetToolCoordWithID(int id, DescPose& coord, int& type, int& install, int& toolID, int& loadNo);
 
 	/**
-	* @brief Get the extended axis coordinate system according to the No
-	* @param [in] index Extended axis coordinate system No
-	* @param [out] coord Coordinate system value
-	* @return Error code
-	*/
-	errno_t GetExAxisCoordWithID(int id, DescPose& coord);
+	 * @brief Get work piece coordinate system by ID
+	 * @param [in] id Work piece coordinate system number
+	 * @param [out] coord Coordinate system values
+	 * @param [out] refFrame Reference coordinate frame
+	 * @return Error code
+	 */
+	errno_t GetWObjCoordWithID(int id, DescPose& coord, int& refFrame);
+
+	/**
+	 * @brief Get external tool coordinate system by ID
+	 * @param [in] id External tool coordinate system number，Numbers 20 to 39 correspond to external tool coordinate systems 0 to 19
+	 * @param [out] coord Pose of robot external fixed tool TCP
+	 * @param [out] tcoord Pose of workpiece coordinate system mounted on robot flange
+	 * @return Error code
+	 */
+	errno_t GetExToolCoordWithID(int id, DescPose& coord, DescPose& tcoord);
+
+	/**
+	 * @brief Get extended axis coordinate system by ID
+	 * @param [in] id External tool coordinate system number
+	 * @param [out] coord Coordinate system values
+	 * @param [out] axisCoordNum Extended axis mask; bit0-bit3 correspond to extended axis 1~4. If axisCoordNum equals 3, extended axis [1, 2] are enabled
+	 * @param [out] calibFlag Calibration flag; 0-Uncalibrated; 1-Calibrated
+	 * @return Error code
+	 */
+	errno_t GetExAxisCoordWithID(int id, DescPose& coord, int& axisCoordNum, int& calibFlag);
 
 	/**
 	* @brief Obtain the load mass and center of mass based on the number
@@ -4910,10 +4964,16 @@ public:
 	errno_t PhotoelectricSensorTCPCalibration(std::string luaPath, DescTran offset, DescPose& TCP);
 
 	/**
-	 * @brief Motion in place
+	 * @brief Stationary Motion
 	 * @return Error code
 	 */
 	errno_t MoveStationary();
+
+	/**
+	 * @brief Wait for stationary motion to complete
+	 * @return Error code
+	 */
+	errno_t WaitStationaryMotionDone();
 
 	/**
 	 * @brief Get the error line number and error code of the lua program
@@ -4993,9 +5053,10 @@ public:
 	 * @param [in] enable 0-Off; 1-Enabled in manual mode; 2-Enabled in all modes
 	 * @param [in] maxTCPVel Maximum TCP speed limit; [0-1000] mm/s
 	 * @param [in] strategy Strategy after overspeed; 0-Stop and alarm; 1-Automatic speed limiting; 2-Stop, alarm and disable
+	 * @param [in] maxJointVel  6-axis maximum joint velocity (°/s), default 45°/s
 	 * @return Error code
 	 */
-	errno_t SetVelReducePara(int enable, double maxTCPVel, int strategy);
+	errno_t SetVelReducePara(int enable, double maxTCPVel, int strategy, std::vector<double> maxJointVel = { 45.0, 45.0, 45.0, 45.0, 45.0, 45.0 });
 
 	/**
 	 * @brief Start fixed-point weaving
@@ -5266,6 +5327,19 @@ public:
 	 * @return  Error code, 0 on success, -1 or other error code on failure
 	 */
 	errno_t GetDexterousHandsFunc(int id, int func[32]);
+
+	/**
+	 * @brief Activate the specified workpiece coordinate system for subsequent point transformations
+	 * @param [in] workpieceID Workpiece number [0-14]
+	 * @return Error code, returns 0 on success
+	 */
+	errno_t WorkPieceTrsfStart(int workpieceID);
+
+	/**
+	 * @brief Deactivate the workpiece coordinate system point transformations
+	 * @return Error code, returns 0 on success
+	 */
+	errno_t WorkPieceTrsfEnd();
 
 
 	/**

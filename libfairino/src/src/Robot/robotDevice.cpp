@@ -925,3 +925,39 @@ errno_t FRRobot::GetDexterousHandsFunc(int id, int func[32])
     c.close();
     return errcode;
 }
+
+/**
+* @brief 传送带原地跟踪参数配置
+* @param [in] trackMode 0-时间；1-距离；2-时间和距离任意满足一个
+* @param [in] trackTime 跟踪时间，单位s
+* @param [in] trackDis 跟踪距离
+* @return 错误码
+*/
+int FRRobot::SetStationaryTrackPara(int trackMode, double trackTime, int trackDis)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = trackMode;
+    param[1] = trackTime;
+    param[2] = trackDis;
+
+    if (c.execute("SetStationaryTrackPara", param, result))
+    {
+        errcode = int(result);
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}

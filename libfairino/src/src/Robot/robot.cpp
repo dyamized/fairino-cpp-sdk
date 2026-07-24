@@ -46,11 +46,11 @@
     // SDK版本号
     #define SDK_VERSION_MAJOR "2"
     #define SDK_VERSION_MINOR "3"
-    #define SDK_VERSION_RELEASE "7"
+    #define SDK_VERSION_RELEASE "8"
     #define SDK_VERSION_RELEASE_NUM "0"
     #define SDK_VERSION "SDK V" SDK_VERSION_MAJOR "." SDK_VERSION_MINOR
 #endif
-#define SDK_RELEASE "SDK V2.3.7.0-robot v3.9.7"
+#define SDK_RELEASE "SDK V2.3.8.0-robot v3.9.8"
 
 #define ROBOT_CNDE_TCP_PORT 20005
 #define ROBOT_CMD_PORT 8080
@@ -3053,6 +3053,8 @@ errno_t FRRobot::ComputeTcp4(DescPose *tcp_pose)
  * @param  [in] coord  工具中心点相对于末端法兰中心位姿
  * @param  [in] type  0-工具坐标系，1-传感器坐标系
  * @param  [in] install 安装位置，0-机器人末端，1-机器人外部
+ * @param  [in] toolID 工具ID
+ * @param  [in] loadNum 负载编号
  * @return  错误码
  */
 errno_t FRRobot::SetToolCoord(int id, DescPose *coord, int type, int install, int toolID, int loadNum)
@@ -10964,7 +10966,7 @@ errno_t FRRobot::LuaDelete(std::string fileName)
 
 /**
  * @brief 获取当前所有lua文件名称
- * @param [out] luaNames lua文件名列表  形如 abd;def;
+ * @param [out] luaNames lua文件名列表;
  * @return 错误码
  */
 errno_t FRRobot::GetLuaList(std::list<std::string>* luaNames)
@@ -10974,57 +10976,21 @@ errno_t FRRobot::GetLuaList(std::list<std::string>* luaNames)
         return g_sock_com_err;
     }
     int errcode = 0;
+
+    int luaNum = 0;
+
     XmlRpcClient c(serverUrl, 20003);
     XmlRpcValue param, result;
-    int lua_num = 0;
-    std::string lua_name_str;
-
-    if (c.execute("GetLuaList", param, result))
+    if (c.execute("GetLuaListPrepare", param, result))
     {
         errcode = int(result[0]);
-        if(0 == errcode)
+        if (0 == errcode)
         {
-            lua_num = int(result[1]);
-            logger_info("there %d luas.", lua_num);
-            lua_name_str = string(result[2]);
-            logger_info("have lua : [%s]", lua_name_str.c_str());
-
-            /* 分割字符串，拿出名称 */
-            size_t pos = 0;
-            size_t found = 0;
-            std::string name_tmp;
-            while (std::string::npos != pos)
-            {
-                name_tmp.clear();
-                found = lua_name_str.find(';', pos);
-
-                if(found != std::string::npos)
-                {
-                    name_tmp = lua_name_str.substr(pos, found - pos);
-                    luaNames->push_back(name_tmp);
-                    pos = found + 1;
-                }
-                else{
-                    // name_tmp = lua_name_str.substr(pos);
-                    // luaNames.push_back(name_tmp);
-                    break;
-                }
-            }
-
-            if(lua_num != luaNames->size())
-            {
-                logger_error("except number is: %d, recv number is: %d.", lua_num, luaNames->size());
-                for(auto it = luaNames->begin(); it != luaNames->end(); it++)
-                {
-                    logger_error("name is: %s.", (*it).c_str());
-                }
-                c.close();
-                luaNames->clear();
-                return ERR_OTHER;
-            }            
-        }else{
+            luaNum = int(result[1]);
+        }
+        else
+        {
             c.close();
-            logger_error("GetLuaList fail, error code: %d.", errcode);
             return errcode;
         }
     }
@@ -11035,6 +11001,32 @@ errno_t FRRobot::GetLuaList(std::list<std::string>* luaNames)
     }
 
     c.close();
+    
+    for (int i = 0; i < luaNum; i++)
+    {
+        XmlRpcClient c1(serverUrl, 20003);
+        XmlRpcValue paramLuaID, resultLuaName;
+        paramLuaID = i;
+        if (c1.execute("GetLuaNameWithID", paramLuaID, resultLuaName))
+        {
+            errcode = int(resultLuaName[0]);
+            if (0 == errcode)
+            {
+                luaNames->push_back(string(resultLuaName[1]));
+            }
+            else
+            {
+                c1.close();
+                return errcode;
+            }
+        }
+        else
+        {
+            c1.close();
+            return ERR_XMLRPC_CMD_FAILED;
+        }
+        c1.close();
+    }
     return errcode;
 }
 
@@ -17348,6 +17340,45 @@ errno_t FRRobot::SetWeldMachineCtrlMode(int mode, int ioType)
 }
 
 /**
+* @brief 获取焊机控制模式
+* @param [out] mode 焊机控制模式;0-直流一元模式；1-脉冲一元模式；2-JOB模式；3-近控模式；4-分别模式；5-CC/CV模式；6-TIG；7-CMT
+* @return 错误码
+*/
+errno_t FRRobot::GetWeldMachineCtrlMode(int& mode)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("GetWeldMachineCtrlMode", param, result))
+    {
+        errcode = int(result[0]);
+        if (errcode == 0)
+        {
+            mode = int(result[1]);
+        }
+        else
+        {
+            logger_error("execute GetWeldMachineCtrlMode fail %d", errcode);
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+
+    return errcode;
+}
+
+/**
 * @brief 上传末端Lua开放协议文件
 * @param filePath 本地lua文件路径名 ".../AXLE_LUA_End_DaHuan.lua"
 * @return 错误码
@@ -21330,9 +21361,13 @@ errno_t FRRobot::GetLaserSeamPos(int trackOffectType, DescPose offset, JointPos&
 * @brief 根据编号获取工具坐标系
 * @param [in] id 工具坐标系编号
 * @param [out] coord 坐标系数值
+* @param [out] type 工具类型 0-工具；1-传感器
+* @param [out] install 安装位置 0-机器人末端；1-机器人外部
+* @param [out] toolID 工具ID
+* @param [out] loadNo 负载编号
 * @return 错误码
 */
-errno_t FRRobot::GetToolCoordWithID(int id, DescPose& coord)
+errno_t FRRobot::GetToolCoordWithID(int id, DescPose& coord, int& type, int& install, int& toolID, int& loadNo)
 {
     if (IsSockError())
     {
@@ -21356,7 +21391,7 @@ errno_t FRRobot::GetToolCoordWithID(int id, DescPose& coord)
         errcode = int(result[0]);
         if (0 != errcode)
         {
-            logger_error("execute GetToolCoordWithIndex fail: %d.", errcode);
+            logger_error("execute GetToolCoordWithID fail: %d.", errcode);
             c.close();
             return errcode;
         }
@@ -21368,6 +21403,14 @@ errno_t FRRobot::GetToolCoordWithID(int id, DescPose& coord)
             coord.rpy.rx = (double)result[4];
             coord.rpy.ry = (double)result[5];
             coord.rpy.rz = (double)result[6];
+
+            if (result.size() >= 11)
+            {
+                type = (int)result[7];
+                install = (int)result[8];
+                toolID = (int)result[9];
+                loadNo = (int)result[10];
+            }
         }
     }
     else
@@ -21384,9 +21427,10 @@ errno_t FRRobot::GetToolCoordWithID(int id, DescPose& coord)
 * @brief 根据编号获取工件坐标系
 * @param [in] id 工件坐标系编号
 * @param [out] coord 坐标系数值
+* @param [out] refFrame 参考坐标系
 * @return 错误码
 */
-errno_t FRRobot::GetWObjCoordWithID(int id, DescPose& coord)
+errno_t FRRobot::GetWObjCoordWithID(int id, DescPose& coord, int& refFrame)
 {
     if (id < 0 || id > 14)
     {
@@ -21419,6 +21463,11 @@ errno_t FRRobot::GetWObjCoordWithID(int id, DescPose& coord)
             coord.rpy.rx = (double)result[4];
             coord.rpy.ry = (double)result[5];
             coord.rpy.rz = (double)result[6];
+
+            if (result.size() >= 8)
+            {
+                refFrame = (int)result[7];
+            }
         }
     }
     else
@@ -21433,17 +21482,13 @@ errno_t FRRobot::GetWObjCoordWithID(int id, DescPose& coord)
 
 /**
 * @brief 根据编号获取外部工具坐标系
-* @param [in] index 外部工具坐标系编号
+* @param [in] index 外部工具坐标系编号，20-39对应外部工具坐标系0-19
 * @param [out] coord 坐标系数值
+* @param [out] tcoord 机器人末端安装工件坐标系位姿
 * @return 错误码
 */
-errno_t FRRobot::GetExToolCoordWithID(int id, DescPose& coord)
+errno_t FRRobot::GetExToolCoordWithID(int id, DescPose& coord, DescPose& tcoord)
 {
-    if (id < 0 || id > 14)
-    {
-        return 4;
-    }
-
     if (IsSockError())
     {
         return g_sock_com_err;
@@ -21471,6 +21516,16 @@ errno_t FRRobot::GetExToolCoordWithID(int id, DescPose& coord)
             coord.rpy.rx = (double)result[4];
             coord.rpy.ry = (double)result[5];
             coord.rpy.rz = (double)result[6];
+
+            if (result.size() >= 13)
+            {
+                tcoord.tran.x = (double)result[7];
+                tcoord.tran.y = (double)result[8];
+                tcoord.tran.z = (double)result[9];
+                tcoord.rpy.rx = (double)result[10];
+                tcoord.rpy.ry = (double)result[11];
+                tcoord.rpy.rz = (double)result[12];
+            }
         }
     }
     else
@@ -21487,9 +21542,11 @@ errno_t FRRobot::GetExToolCoordWithID(int id, DescPose& coord)
 * @brief 根据编号获取扩展轴坐标系
 * @param [in] index 外部工具坐标系编号
 * @param [out] coord 坐标系数值
+* @param [out] axisCoordNum 扩展轴号；bit0-bit3对应扩展轴1-扩展轴4；如axisCoordNum值为3,对应应用扩展轴[1，2]
+* @param [out] calibFlag 标定标志；0-未标定；1-已标定
 * @return 错误码
 */
-errno_t FRRobot::GetExAxisCoordWithID(int id, DescPose& coord)
+errno_t FRRobot::GetExAxisCoordWithID(int id, DescPose& coord, int& axisCoordNum, int& calibFlag)
 {
     if (id < 0 || id > 4)
     {
@@ -21523,6 +21580,12 @@ errno_t FRRobot::GetExAxisCoordWithID(int id, DescPose& coord)
             coord.rpy.rx = (double)result[4];
             coord.rpy.ry = (double)result[5];
             coord.rpy.rz = (double)result[6];
+
+            if (result.size() >= 9)
+            {
+                axisCoordNum = (int)result[7];
+                calibFlag = (int)result[8];
+            }
         }
     }
     else
@@ -23137,41 +23200,6 @@ errno_t FRRobot::PhotoelectricSensorTCPCalibration(std::string luaPath, DescTran
     return rtn;
 }
 
-
-/**
- * @brief 原地空运动
- * @return 错误码
- */
-errno_t FRRobot::MoveStationary()
-{
-    if (IsSockError())
-    {
-        return g_sock_com_err;
-    }
-    int errcode = 0;
-    XmlRpcClient c(serverUrl, 20003);
-    XmlRpcValue param, result;
-
-    if (c.execute("MoveStationary", param, result))
-    {
-        errcode = int(result);
-        if (0 != errcode)
-        {
-            logger_error("execute MoveStationary fail: %d.", errcode);
-            c.close();
-            return errcode;
-        }
-    }
-    else
-    {
-        c.close();
-        return ERR_XMLRPC_CMD_FAILED;
-    }
-
-    c.close();
-    return errcode;
-}
-
 /**
  * @brief 获取lua程序错误行号和错误码
  * @param [out] errLinNum lua程序执行错误行号
@@ -23315,9 +23343,10 @@ errno_t FRRobot::SetCmdRpyCallback(void (*CallBack)(int comType, int count, int 
  * @param [in] enable 0-关；1-手动模式启用；2-所有模式启用(不支持自动限速)
  * @param [in] maxTCPVel 限制最大TCP速度;[0-1000]mm/s
  * @param [in] strategy 超速后策略；0-停止报警；1-自动限速；2-停止报警并去使能
+ * @param [in] maxJointVel 6个关节最大速度(°/s) 默认为45°/s
  * @return 错误码
  */
-errno_t FRRobot::SetVelReducePara(int enable, double maxTCPVel, int strategy)
+errno_t FRRobot::SetVelReducePara(int enable, double maxTCPVel, int strategy, std::vector<double> maxJointVel)
 {
     if (IsSockError())
     {
@@ -23329,6 +23358,11 @@ errno_t FRRobot::SetVelReducePara(int enable, double maxTCPVel, int strategy)
         return ERR_PARAM_VALUE;
     }
 
+    if (maxJointVel.size() < 6)
+    {
+        return ERR_PARAM_NUM;
+    }
+
     int errcode = 0;
     XmlRpcClient c(serverUrl, 20003);
     XmlRpcValue param, result;
@@ -23336,6 +23370,12 @@ errno_t FRRobot::SetVelReducePara(int enable, double maxTCPVel, int strategy)
     param[0][0] = enable;
     param[0][1] = maxTCPVel;
     param[0][2] = strategy;
+    param[0][3] = maxJointVel[0];
+    param[0][4] = maxJointVel[1];
+    param[0][5] = maxJointVel[2];
+    param[0][6] = maxJointVel[3];
+    param[0][7] = maxJointVel[4];
+    param[0][8] = maxJointVel[5];
 
     if (c.execute("SetVelReducePara", param, result))
     {

@@ -558,3 +558,144 @@ errno_t FRRobot::GetWeaveBackCenterConfig(int& flag)
     c.close();
     return errcode;
 }
+
+/**
+ * @brief 工件坐标系点位转换开始
+ * @param [in] workpieceID 工件号[0-14]
+ * @return 错误码，成功返回0
+ */
+errno_t FRRobot::WorkPieceTrsfStart(int workpieceID)
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    param[0] = workpieceID;
+
+    if (c.execute("WorkPieceTrsfStart", param, result))
+    {
+        errcode = int(result);
+        if (0 != errcode)
+        {
+            logger_error("execute WorkPieceTrsfStart fail: %d.", errcode);
+            c.close();
+            return errcode;
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief 工件坐标系点位转换结束
+ * @return 错误码，成功返回0
+ */
+errno_t FRRobot::WorkPieceTrsfEnd()
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("WorkPieceTrsfEnd", param, result))
+    {
+        errcode = int(result);
+        if (0 != errcode)
+        {
+            logger_error("execute WorkPieceTrsfEnd fail: %d.", errcode);
+            c.close();
+            return errcode;
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief 原地空运动
+ * @return 错误码
+ */
+errno_t FRRobot::MoveStationary()
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("MoveStationary", param, result))
+    {
+        errcode = int(result);
+        if (0 != errcode)
+        {
+            logger_error("execute MoveStationary fail: %d.", errcode);
+            c.close();
+            return errcode;
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}
+
+/**
+ * @brief 等待原地空运动完成
+ * @return 错误码
+ */
+errno_t FRRobot::WaitStationaryMotionDone()
+{
+    if (IsSockError())
+    {
+        return g_sock_com_err;
+    }
+    int errcode = 0;
+    XmlRpcClient c(serverUrl, 20003);
+    XmlRpcValue param, result;
+
+    if (c.execute("WaitStationaryMotionDone", param, result))
+    {
+        errcode = int(result);
+        if (0 != errcode)
+        {
+            logger_error("execute WaitStationaryMotionDone fail: %d.", errcode);
+            c.close();
+            return errcode;
+        }
+    }
+    else
+    {
+        c.close();
+        return ERR_XMLRPC_CMD_FAILED;
+    }
+
+    c.close();
+    return errcode;
+}

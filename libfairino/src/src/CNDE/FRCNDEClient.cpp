@@ -738,6 +738,7 @@ void FRCNDEClient::InitAllStates()
     allStates.insert({ RobotState::SocketReadTimeout,  std::make_tuple("socket_read_timeout", offsetof(ROBOT_STATE_PKG, socketReadTimeout), "UINT8", "UINT8") });
     allStates.insert({ RobotState::TsWebStateComErr,  std::make_tuple("ts_web_state_com_err", offsetof(ROBOT_STATE_PKG, tsWebStateComErr), "UINT8", "UINT8") });
     allStates.insert({ RobotState::ExaxisCoordID,  std::make_tuple("exaxis_coord_id", offsetof(ROBOT_STATE_PKG, exaxisCoordID), "UINT8", "UINT8") });
+    allStates.insert({ RobotState::ProgramRunState,  std::make_tuple("program_run_state", offsetof(ROBOT_STATE_PKG, programRunState), "UINT8", "UINT8") });
 
     configStates = {
     RobotState::ProgramState,
