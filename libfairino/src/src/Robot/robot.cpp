@@ -126,7 +126,7 @@ void FRRobot::RobotInstCmdSendRoutineThread()
             logger_info("cmd send:%s.", g_sendbuf);
             if (sendbyte < 0)
             {
-                cmdClient->Close();
+                // cmdClient->Close(); why was this needed here?
                 g_sock_com_err = ERR_SOCKET_COM_FAILED;
                 memset(robot_state_pkg.get(), 0, sizeof(ROBOT_STATE_PKG));
                 logger_error("cmd send %s error", g_sendbuf);
@@ -181,7 +181,7 @@ void FRRobot::RobotInstCmdRecvRoutineThread()
         }
     }
 
-    cmdClient->Close();
+    // cmdClient->Close(); let's just close socket in ::Close()
     g_sock_com_err = ERR_SOCKET_COM_FAILED;
     memset(robot_state_pkg.get(), 0, sizeof(ROBOT_STATE_PKG));
    
@@ -273,8 +273,7 @@ errno_t FRRobot::RPC(const char *ip)
         return rtn;
     }
 
-    thread cmdsendThread(&FRRobot::RobotInstCmdSendRoutineThread, this);
-    cmdsendThread.detach();
+    cmdsendThread = thread(&FRRobot::RobotInstCmdSendRoutineThread, this);
 
     Sleep(2000);
     if (IsSockError())
@@ -283,11 +282,9 @@ errno_t FRRobot::RPC(const char *ip)
         return g_sock_com_err;
     }
 
-    thread cmdrecvThread(&FRRobot::RobotInstCmdRecvRoutineThread, this);
-    cmdrecvThread.detach();
+    cmdrecvThread = thread(&FRRobot::RobotInstCmdRecvRoutineThread, this);
 
-    thread taskRoutineThread(&FRRobot::RobotTaskRoutineThread, this);
-    taskRoutineThread.detach();
+    taskRoutineThread = thread(&FRRobot::RobotTaskRoutineThread, this);
 
     udpCmdClient->Connect(string(robot_ip), ROBOT_UDP_CMD_PORT);
 
@@ -318,7 +315,21 @@ errno_t FRRobot::CloseRPC()
     {
         udpCmdClient->Close();
     }
-    
+
+    if (cndeClient)
+    {
+        cndeClient->Close();
+    }
+
+    if (cmdsendThread.joinable())
+        cmdsendThread.join();
+
+    if (cmdrecvThread.joinable())
+        cmdrecvThread.join();
+
+    if (taskRoutineThread.joinable())
+        taskRoutineThread.join();
+
     g_sock_com_err = ERR_SOCKET_COM_FAILED;
     memset(robot_state_pkg.get(), 0, sizeof(ROBOT_STATE_PKG));
 

@@ -17,6 +17,14 @@
 #include <vector>
 #include <memory>
 
+#ifdef __MINGW32__
+#define TCP_MAXRT 5
+#include <mingw.thread.h>
+#else
+using namespace std;
+#include <thread>
+#endif
+
 class FRTcpClient;
 class FRUdpClient;
 class FRCNDEClient;
@@ -5408,6 +5416,10 @@ private:
 	std::shared_ptr <FRTcpClient> cmdClient;
 	std::shared_ptr <FRUdpClient> udpCmdClient;
 	std::shared_ptr <FRCNDEClient> cndeClient;
+
+	thread cmdsendThread;
+	thread cmdrecvThread;
+	thread taskRoutineThread;
 };
 
 #endif

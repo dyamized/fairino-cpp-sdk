@@ -11,6 +11,14 @@
 #define FR_LIB_CNDE_EXPORT
 #endif
 
+#ifdef __MINGW32__
+#define TCP_MAXRT 5
+#include <mingw.thread.h>
+#else
+using namespace std;
+#include <thread>
+#endif
+
 class FR_LIB_CNDE_EXPORT FRCNDEClient
 {
 public:
@@ -49,6 +57,7 @@ private:
 	bool robotStateRunFlag = false;
 	std::shared_ptr <FRTcpClient> rtClient;
 	std::shared_ptr<ROBOT_STATE_PKG> robotStatePkg;
+	thread stateThread;
 
 	int robotStatePeriod = 8;
 	uint8_t sendCount = 0;

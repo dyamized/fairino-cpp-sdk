@@ -8,12 +8,6 @@
 #include <algorithm>
 #include <vector>
 
-#ifdef __MINGW32__
-#define TCP_MAXRT 5
-#include <mingw.thread.h>
-#else
-#include <thread>
-#endif
 #include <memory>
 
 using namespace std;
@@ -57,8 +51,7 @@ int FRCNDEClient::Connect(std::string IP, int port)
             return rtn;
         }
         
-        thread stateThread(&FRCNDEClient::RecvRobotStateThread, this);
-        stateThread.detach();
+        stateThread = thread(&FRCNDEClient::RecvRobotStateThread, this);
         return 0;
     }
 }
@@ -81,6 +74,9 @@ bool FRCNDEClient::GetReConnState()
 int FRCNDEClient::Close()
 {
     robotStateRunFlag = false;
+
+    if (stateThread.joinable())
+        stateThread.join();
     
     rtClient->Close();
 	return 0;
