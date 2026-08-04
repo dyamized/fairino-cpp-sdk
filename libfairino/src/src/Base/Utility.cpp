@@ -21,6 +21,20 @@ using namespace std;
 
 #define MAX_FILE_PATH_LENGTH 512
 
+const char * safe_basename(const char* path)
+{
+    if (!path == !*path)
+        return ".";
+
+    const char* last_slash = strrchr(path, '/');
+#ifdef WIN32
+    const char* last_backslash = strrchr(path, '\\');
+    if (last_backslash > last_slash)
+        last_slash = last_backslash;
+#endif
+    return last_slash ? last_slash + 1 : path;
+}
+
 // 跨平台获取文件大小的函数
 std::streampos GetFileSize(const std::string& filePath) 
 {
@@ -51,14 +65,8 @@ std::string GetFileNameInPath(std::string filePath)
     string point_table_name;
 #ifdef WIN32
     point_table_name = PathFindFileNameA(filePath.c_str());
-#elif defined(__APPLE__)
-    char result_buffer[1024];
-
-    // Safely extract the filename
-    char *filename = basename_r(filePath.c_str(), result_buffer);
-    point_table_name.append(filename);
 #else
-    point_table_name.append(basename(filePath.c_str()));
+    point_table_name.append(safe_basename(filePath.c_str()));
     logger_info("name is: %s.", point_table_name.c_str());
 #endif
 

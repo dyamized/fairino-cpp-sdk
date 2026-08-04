@@ -23,3 +23,5 @@ std::string GetFileNameInPath(std::string path);
 bool CheckFileIsExist(std::string path);
 
 int _Sleep(int ms);
+
+const char * safe_basename(const char* path);

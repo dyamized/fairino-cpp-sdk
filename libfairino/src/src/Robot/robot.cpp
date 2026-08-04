@@ -9107,11 +9107,7 @@ errno_t FRRobot::PointTableUpLoad(const std::string &pointTableFilePath)
 #ifdef WIN32
     point_table_name = PathFindFileNameA(pointTableFilePath.c_str());
 #else
-    // point_table_name = save_path.filename();
-    char path_dup[MAX_POINT_TABLE_PATH_LENGTH];
-    memset(path_dup, 0, MAX_POINT_TABLE_PATH_LENGTH);
-    memcpy(path_dup, save_path, MAX_POINT_TABLE_PATH_LENGTH-1);
-    point_table_name.append(basename(path_dup));
+    point_table_name.append(safe_basename(save_path));
     logger_info("point table name is: %s.", point_table_name.c_str());
 #endif
 
