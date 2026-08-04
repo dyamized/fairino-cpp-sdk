@@ -156,7 +156,9 @@ int FRTcpClient::SetTimeOut(int timeout)
     }
 #else
     int syncnt = 2;
+#ifndef __APPLE__
     setsockopt(fd, IPPROTO_TCP, TCP_SYNCNT, &syncnt, sizeof(syncnt));        //这玩意不会用
+#endif
     struct timeval tv;
     tv.tv_sec = timeOut / 1000;
     tv.tv_usec = timeOut % 1000 * 1000;
@@ -169,9 +171,11 @@ int FRTcpClient::SetTimeOut(int timeout)
     int keepCount = 1; // 探测尝试的次数.如果第1次探测包就收到响应了,则不再发.
 
     setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void*)&keepAlive, sizeof(keepAlive));
+#ifndef __APPLE__
     setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, (void*)&keepIdle, sizeof(keepIdle));
     setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, (void*)&keepInterval, sizeof(keepInterval));
     setsockopt(fd, SOL_TCP, TCP_KEEPCNT, (void*)&keepCount, sizeof(keepCount));
+#endif
 
 #endif
     return 0;

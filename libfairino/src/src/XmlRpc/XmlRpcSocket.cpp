@@ -176,7 +176,7 @@ XmlRpcSocket::connect(int fd, std::string& host, int port)
   hints.ai_socktype = SOCK_STREAM;
   status = getaddrinfo(host.c_str(), NULL, &hints, &res);
   if (status != 0) {
-      logger_info("getaddrinfo failed %s.", host);
+      logger_info("getaddrinfo failed %s.", host.c_str());
       return false;
   }
 

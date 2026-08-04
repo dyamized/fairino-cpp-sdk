@@ -4,6 +4,7 @@
 #include "stdlib.h"
 #include <string.h>
 #include <chrono>
+#include <libgen.h>
 
 #ifdef __MINGW32__
 #define TCP_MAXRT 5
@@ -50,6 +51,12 @@ std::string GetFileNameInPath(std::string filePath)
     string point_table_name;
 #ifdef WIN32
     point_table_name = PathFindFileNameA(filePath.c_str());
+#elif defined(__APPLE__)
+    char result_buffer[1024];
+
+    // Safely extract the filename
+    char *filename = basename_r(filePath.c_str(), result_buffer);
+    point_table_name.append(filename);
 #else
     point_table_name.append(basename(filePath.c_str()));
     logger_info("name is: %s.", point_table_name.c_str());

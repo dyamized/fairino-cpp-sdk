@@ -275,7 +275,7 @@ void FRCNDEClient::RecvRobotStateThread()
                         else
                         {
                             statePtrIndex += GetConfigTypeSize(get<3>(allStates[type]));
-                            logger_error("Robot cnde state type error. %s %s", get<1>(allStates[type]), get<3>(allStates[type]));
+                            //logger_error("Robot cnde state type error. %s %s", get<1>(allStates[type]), get<3>(allStates[type]));
                         }
                     }
                     break;

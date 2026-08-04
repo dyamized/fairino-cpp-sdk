@@ -120,7 +120,9 @@ namespace fr_network
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(int));
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(int));
 #else
+#ifndef __APPLE__
         setsockopt(fd, IPPROTO_TCP, TCP_SYNCNT, &syncnt, sizeof(syncnt));
+#endif
         struct timeval tv;
         tv.tv_sec = sec;
         tv.tv_usec = millsec * 1000;

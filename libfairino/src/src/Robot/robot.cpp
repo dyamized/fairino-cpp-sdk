@@ -2871,7 +2871,7 @@ errno_t FRRobot::SetSpeedInstant(int vel)
 
     is_sendcmd = true;
 
-    logger_info("SetSpeed(%s)." , sendFrame);
+    //logger_info("SetSpeed(%s)." , sendFrame);
 
     return 0;
 }
@@ -8812,8 +8812,11 @@ errno_t FRRobot::PointTableDownLoad(const std::string &pointTableName, const std
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(int));
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(int));
 #else
+
+#ifndef __APPLE__
     int syncnt = 3;
     setsockopt(fd, IPPROTO_TCP, TCP_SYNCNT, &syncnt, sizeof(syncnt));
+#endif
     struct timeval tv;
     tv.tv_sec = 5;
     tv.tv_usec = 0;
@@ -9147,7 +9150,9 @@ errno_t FRRobot::PointTableUpLoad(const std::string &pointTableFilePath)
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(int));
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(int));
 #else
+#ifndef __APPLE__
     setsockopt(fd, IPPROTO_TCP, TCP_SYNCNT, &syncnt, sizeof(syncnt));
+#endif
     struct timeval tv;
     tv.tv_sec = 5;
     tv.tv_usec = 0;
@@ -10278,8 +10283,10 @@ errno_t FRRobot::FileDownLoad(int fileType, std::string fileName, std::string sa
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(int));
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(int));
 #else
+#ifndef __APPLE__
     int syncnt = 3;
     setsockopt(fd, IPPROTO_TCP, TCP_SYNCNT, &syncnt, sizeof(syncnt));
+#endif
     struct timeval tv;
     tv.tv_sec = 5;
     tv.tv_usec = 0;
@@ -10598,7 +10605,7 @@ errno_t FRRobot::FileUpLoad(int fileType, std::string filePath, int reUp)
 
     if (!CheckFileIsExist(filePath))
     {
-        logger_error("path %s do not exist.", filePath);
+        logger_error("path %s do not exist.", filePath.c_str());
         return ERR_UPLOAD_FILE_NOT_FOUND;
     }
 
@@ -17451,7 +17458,7 @@ errno_t FRRobot::AxleLuaUpload(std::string filePath)
         rtn = SlaveFileWrite(1, 7, filename);
         if (rtn != 0)
         {
-            logger_error("SlaveFileWrite failed %s" , filename);
+            logger_error("SlaveFileWrite failed %s" , filename.c_str());
             return -1;
         }
 

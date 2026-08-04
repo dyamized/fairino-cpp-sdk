@@ -518,7 +518,7 @@ errno_t FRRobot::SetWeaveOffsetRT(DescPose offset)
 
     is_sendcmd = true;
 
-    logger_info("SetWeaveOffsetRT(%s).", sendFrame);
+    logger_info("SetWeaveOffsetRT(%s).", sendFrame.c_str());
 
     return 0;
 }
